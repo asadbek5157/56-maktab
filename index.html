@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Menning Online Kutubxonam</title>
+<title>56-Maktab Kutubxonasi</title>
 <style>
   body { font-family: 'Segoe UI', Tahoma, sans-serif; margin:0; background: linear-gradient(135deg, #f3f4f6, #e2e8f0); }
   header { background:#1e3a8a; color:white; padding:30px 10px; text-align:center; box-shadow:0 4px 10px rgba(0,0,0,0.2);}
@@ -38,6 +38,9 @@
   .comment { border-top:1px solid #eee; padding:5px 0; font-size:14px; }
   .comment strong { color:#1e3a8a; }
 
+  #loginPrompt { display:none; text-align:center; margin:20px auto; padding:20px; background:white; border-radius:12px; width:90%; max-width:400px; box-shadow:0 6px 20px rgba(0,0,0,0.1);}
+  #loginPrompt input { width:90%; margin:5px 0; padding:10px; border-radius:8px; border:1px solid #ccc; }
+
   @media(max-width:600px){
     .book-list { grid-template-columns: repeat(2,1fr); gap:15px; }
     .book img { height:150px; }
@@ -48,8 +51,7 @@
 <body>
 
 <header>
-  <h1>56-MAKTAB KUTUBXONASIGA <br> XUSH KELIBSIZ
-  </h1>
+  <h1>56-MAKTAB KUTUBXONASIGA <br> XUSH KELIBSIZ</h1>
 </header>
 
 <div class="controls">
@@ -65,11 +67,23 @@
     <option value="bolalar">Bolalar adabiyoti</option>
   </select>
   <button onclick="searchBook()">Qidirish</button>
-  <button id="addBookBtn" onclick="showAddBook()">Kitob Qo'shish</button>
+  <button id="addBookBtn" onclick="promptLoginForAdd()">Kitob Qo'shish</button>
 </div>
 
-<div class="book-list" id="bookList"></div>
+<div class="book-list" id="bookList">
+  <p style="text-align:center; color:#555;">Hozircha kitoblar mavjud emas.</p>
+</div>
 
+<!-- Login prompt -->
+<div id="loginPrompt">
+  <h3>Admin Login</h3>
+  <input type="text" id="adminUser" placeholder="Login">
+  <input type="password" id="adminPass" placeholder="Parol">
+  <button onclick="adminLogin()">Kirish</button>
+  <button onclick="hideLoginPrompt()">Bekor qilish</button>
+</div>
+
+<!-- Add Book Form -->
 <div id="addBookForm">
   <input type="text" id="newTitle" placeholder="Kitob nomi">
   <input type="text" id="newAuthor" placeholder="Muallif">
@@ -107,20 +121,25 @@
 </div>
 
 <script>
-const isAdmin = true;
-if(!isAdmin) document.getElementById('addBookBtn').style.display='none';
+// Admin credentials
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "1234";
+let isAdmin = false;
 
-let books = JSON.parse(localStorage.getItem('books')) || [
-  { title: "Oʻzbekiston Respublikasi Konstitutsiyasi", author: "Davlat qonunlari", year: 2023, category:"konstitutsiya", file:"pdfs/konstitutsiya.pdf", image:"images/konstitutsiya.jpg", rating:0, comments:[] },
-  { title: "Jinoyat kodeksi", author: "Oʻzbekiston Respublikasi", year: 2026, category:"jinoyat", file:"pdfs/jinoyat.pdf", image:"images/jinoyat.jpg", rating:0, comments:[] },
-  { title: "Maʼmuriy javobgarlik kodeksi", author: "Oʻzbekiston Respublikasi", year: 2026, category:"ma’muriy", file:"pdfs/mamuriy.pdf", image:"images/mamuriy.jpg", rating:0, comments:[] },
-  { title: "Oila kodeksi", author: "Oʻzbekiston Respublikasi", year: 2026, category:"oila", file:"pdfs/oila.pdf", image:"images/oila.jpg", rating:0, comments:[] }
-];
+// Load books from localStorage
+let books = JSON.parse(localStorage.getItem('books')) || [];
 
+// Save books to localStorage
+function saveBooks(){ localStorage.setItem('books', JSON.stringify(books)); }
+
+// Display books
 function displayBooks(list){
   const container = document.getElementById('bookList');
   container.innerHTML = '';
-  if(list.length===0){ container.innerHTML='<p>Kitob topilmadi...</p>'; return; }
+  if(list.length===0){ 
+    container.innerHTML='<p style="text-align:center; color:#555;">Hozircha kitoblar mavjud emas.</p>'; 
+    return; 
+  }
   list.forEach((book,index)=>{
     const div = document.createElement('div');
     div.className='book';
@@ -131,14 +150,14 @@ function displayBooks(list){
                      <p>Muallif: ${book.author}</p>
                      <p>Yil: ${book.year}</p>
                      <p>Kategoriya: ${book.category}</p>
-                     <p style="color:gold;">${stars}</p>
-                     ${isAdmin?`<button onclick="deleteBook(${index})" style="background:red;margin-top:5px;">O'chirish</button>`:''}`;
+                     <p style="color:gold;">${stars}</p>`;
     container.appendChild(div);
   });
 }
 
 displayBooks(books);
 
+// Search function
 function searchBook(){
   const query=document.getElementById('search').value.toLowerCase();
   const cat=document.getElementById('category').value;
@@ -147,36 +166,7 @@ function searchBook(){
   displayBooks(filtered);
 }
 
-function showAddBook(){ if(isAdmin) document.getElementById('addBookForm').style.display='block'; else alert("Faqat admin qo‘sha oladi!"); }
-function hideAddBook(){ document.getElementById('addBookForm').style.display='none'; }
-
-function addBook(){
-  const title=document.getElementById('newTitle').value;
-  const author=document.getElementById('newAuthor').value;
-  const year=document.getElementById('newYear').value;
-  const category=document.getElementById('newCategory').value;
-  const file=document.getElementById('newFile').value;
-  const image=document.getElementById('newImage').value;
-  if(title && author && year && file && image){
-    books.push({title,author,year:parseInt(year),category,file,image,rating:0,comments:[]});
-    localStorage.setItem('books',JSON.stringify(books));
-    displayBooks(books);
-    document.getElementById('newTitle').value=''; document.getElementById('newAuthor').value='';
-    document.getElementById('newYear').value=''; document.getElementById('newFile').value='';
-    document.getElementById('newImage').value=''; hideAddBook();
-  }else alert('Iltimos, barcha maydonlarni to‘ldiring!');
-}
-
-function deleteBook(index){
-  if(confirm("Bu kitobni o'chirmoqchimisiz?")){
-    books.splice(index,1);
-    localStorage.setItem('books',JSON.stringify(books));
-    displayBooks(books);
-  }
-}
-
-function openPDF(file){ window.open(file,"_blank"); }
-
+// Modal
 let currentBookIndex = null;
 function openModal(index){
   currentBookIndex = index;
@@ -187,20 +177,18 @@ function openModal(index){
   document.getElementById('modalAuthor').innerText = "Muallif: " + book.author;
   document.getElementById('modalYear').innerText = "Yil: " + book.year;
   document.getElementById('modalCategory').innerText = "Kategoriya: " + book.category;
-  document.getElementById('modalReadBtn').onclick = ()=>openPDF(book.file);
+  document.getElementById('modalReadBtn').onclick = ()=>window.open(book.file,"_blank");
 
-  // Show stars
   const starContainer = document.getElementById('starRating');
   starContainer.innerHTML='';
   for(let i=1;i<=5;i++){
     const star = document.createElement('span');
     star.innerHTML = '★';
     star.className = i<=book.rating ? 'active':'';
-    star.onclick = ()=> { books[index].rating = i; localStorage.setItem('books',JSON.stringify(books)); displayBooks(books); openModal(index); }
+    star.onclick = ()=> { books[index].rating = i; saveBooks(); displayBooks(books); openModal(index); }
     starContainer.appendChild(star);
   }
 
-  // Show comments
   const commentSection = document.getElementById('commentSection');
   commentSection.innerHTML='';
   book.comments.forEach(c=>{
@@ -221,10 +209,57 @@ function addComment(){
   const text = document.getElementById('commentInput').value.trim();
   if(text && currentBookIndex !== null){
     books[currentBookIndex].comments.push({user:'Foydalanuvchi', text});
-    localStorage.setItem('books',JSON.stringify(books));
+    saveBooks();
     openModal(currentBookIndex);
   }
 }
+
+// Show login prompt only when adding book
+function promptLoginForAdd(){
+  if(!isAdmin){
+    document.getElementById('loginPrompt').style.display='block';
+  } else {
+    showAddBook();
+  }
+}
+
+function hideLoginPrompt(){ document.getElementById('loginPrompt').style.display='none'; }
+
+// Admin login
+function adminLogin(){
+  const user=document.getElementById('adminUser').value;
+  const pass=document.getElementById('adminPass').value;
+  if(user===ADMIN_USER && pass===ADMIN_PASS){
+    isAdmin = true;
+    hideLoginPrompt();
+    showAddBook();
+  } else {
+    alert("Login yoki parol xato!");
+  }
+}
+
+// Show/Hide Add Book form
+function showAddBook(){ document.getElementById('addBookForm').style.display='block'; }
+function hideAddBook(){ document.getElementById('addBookForm').style.display='none'; }
+
+// Add book
+function addBook(){
+  const title=document.getElementById('newTitle').value;
+  const author=document.getElementById('newAuthor').value;
+  const year=document.getElementById('newYear').value;
+  const category=document.getElementById('newCategory').value;
+  const file=document.getElementById('newFile').value;
+  const image=document.getElementById('newImage').value;
+  if(title && author && year && file && image){
+    books.push({title,author,year:parseInt(year),category,file,image,rating:0,comments:[]});
+    saveBooks();
+    displayBooks(books);
+    document.getElementById('newTitle').value=''; document.getElementById('newAuthor').value='';
+    document.getElementById('newYear').value=''; document.getElementById('newFile').value='';
+    document.getElementById('newImage').value=''; hideAddBook();
+  }else alert('Iltimos, barcha maydonlarni to‘ldiring!');
+}
 </script>
+
 </body>
 </html>
